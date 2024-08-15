@@ -1,0 +1,316 @@
+ #include <iostream>
+#include <string>
+#include <fstream>
+#include <limits>
+#include <cstdlib> // For system()
+
+using namespace std;
+
+struct Book {
+    int id;
+    string title;
+    string author;
+    bool isBorrowed;
+    Book* next;
+};
+
+class Library {
+private:
+    Book* head;
+    int numBooks;
+
+    // Utility function to display book details
+    void displayBook(const Book* book) const {
+        cout << "ID: " << book->id << endl;
+        cout << "Title: " << book->title << endl;
+        cout << "Author: " << book->author << endl;
+        cout << "Status: " << (book->isBorrowed ? "Borrowed" : "Available") << endl;
+    }
+
+public:
+    Library() : head(nullptr), numBooks(0) {}
+
+    ~Library() {
+        while (head != nullptr) {
+            Book* temp = head;
+            head = head->next;
+            delete temp;
+        }
+    }
+
+    // Function to add a new book
+    void addBook(int id, const string &title, const string &author) {
+        Book* newBook = new Book{id, title, author, false, head};
+        head = newBook;
+        numBooks++;
+        cout << "Book added successfully!" << endl;
+    }
+
+    // Function to delete a book by ID
+    void deleteBook(int id) {
+        Book* current = head;
+        Book* previous = nullptr;
+
+        while (current != nullptr && current->id != id) {
+            previous = current;
+            current = current->next;
+        }
+
+        if (current != nullptr) {
+            if (previous != nullptr) {
+                previous->next = current->next;
+            } else {
+                head = current->next;
+            }
+            delete current;
+            numBooks--;
+            cout << "Book deleted successfully!" << endl;
+        } else {
+            cout << "Book not found!" << endl;
+        }
+    }
+
+    // Function to update book details by ID
+    void updateBook(int id) {
+        Book* current = head;
+        while (current != nullptr && current->id != id) {
+            current = current->next;
+        }
+        if (current != nullptr) {
+            cout << "Updating book with ID " << id << endl;
+            cout << "Enter new title: ";
+            cin.ignore(); // To ignore newline character left in buffer
+            getline(cin, current->title);
+            cout << "Enter new author: ";
+            getline(cin, current->author);
+            cout << "Book updated successfully!" << endl;
+        } else {
+            cout << "Book not found!" << endl;
+        }
+    }
+
+    // Function to search for a book by ID
+    void searchBook(int id) const {
+        Book* current = head;
+        while (current != nullptr) {
+            if (current->id == id) {
+                cout << "Book found:" << endl;
+                displayBook(current);
+                return;
+            }
+            current = current->next;
+        }
+        cout << "Book not found!" << endl;
+    }
+
+    // Function to borrow a book by ID
+    void borrowBook(int id) {
+        Book* current = head;
+        while (current != nullptr) {
+            if (current->id == id) {
+                if (current->isBorrowed) {
+                    cout << "Book is already borrowed!" << endl;
+                } else {
+                    current->isBorrowed = true;
+                    cout << "Book borrowed successfully!" << endl;
+                }
+                return;
+            }
+            current = current->next;
+        }
+        cout << "Book not found!" << endl;
+    }
+
+    // Function to return a book by ID
+    void returnBook(int id) {
+        Book* current = head;
+        while (current != nullptr) {
+            if (current->id == id) {
+                if (!current->isBorrowed) {
+                    cout << "Book was not borrowed!" << endl;
+                } else {
+                    current->isBorrowed = false;
+                    cout << "Book returned successfully!" << endl;
+                }
+                return;
+            }
+            current = current->next;
+        }
+        cout << "Book not found!" << endl;
+    }
+
+    // Function to display all books
+    void displayBooks() const {
+        if (head == nullptr) {
+            cout << "No books in the library." << endl;
+        } else {
+            cout << "Library Books:" << endl;
+            Book* current = head;
+            while (current != nullptr) {
+                displayBook(current);
+                cout << "------------------------------------" << endl;
+                current = current->next;
+            }
+        }
+    }
+
+    // Function to save books to a file
+    void saveToFile(const string &filename) const {
+        ofstream outFile(filename);
+        if (!outFile) {
+            cerr << "Error opening file for writing." << endl;
+            return;
+        }
+
+        Book* current = head;
+        while (current != nullptr) {
+            outFile << current->id << endl;
+            outFile << current->title << endl;
+            outFile << current->author << endl;
+            outFile << (current->isBorrowed ? "1" : "0") << endl;
+            current = current->next;
+        }
+
+        outFile.close();
+        cout << "Library data saved to file." << endl;
+    }
+
+    // Function to load books from a file
+    void loadFromFile(const string &filename) {
+        ifstream inFile(filename);
+        if (!inFile) {
+            cerr << "Error opening file for reading." << endl;
+            return;
+        }
+
+        while (inFile.peek() != ifstream::traits_type::eof()) {
+            int id;
+            string title;
+            string author;
+            bool isBorrowed;
+
+            inFile >> id;
+            inFile.ignore(); // To ignore newline character left in buffer
+            getline(inFile, title);
+            getline(inFile, author);
+            inFile >> isBorrowed;
+            inFile.ignore(); // To ignore newline character left in buffer
+
+            Book* newBook = new Book{id, title, author, isBorrowed, head};
+            head = newBook;
+            numBooks++;
+        }
+
+        inFile.close();
+        cout << "Library data loaded from file." << endl;
+    }
+};
+
+// Function to clear the console screen
+void clrscr() {
+#ifdef _WIN32
+    system("cls");
+#else
+    system("clear");
+#endif
+}
+
+void clearInputStream() {
+    cin.clear(); // Clear error flag
+    cin.ignore(numeric_limits<streamsize>::max(), '\n'); // Ignore invalid input
+}
+
+int main() {
+    Library library;
+    int choice, id;
+    string title, author;
+
+    // Load data from file at startup
+    library.loadFromFile("library_data.txt");
+
+    while (true) {
+        clrscr(); // Clear screen before displaying the menu
+
+        cout << "\n-----------------------------------------------Library Management System------------------------------------------------" << endl;
+        cout << "\n1. Add Book" << endl;
+        cout << "2. Delete Book" << endl;
+        cout << "3. Update Book" << endl;
+        cout << "4. Search Book" << endl;
+        cout << "5. Borrow Book" << endl;
+        cout << "6. Return Book" << endl;
+        cout << "7. Display Books" << endl;
+        cout << "8. Save and Exit" << endl;
+        cout << "Enter your choice: ";
+        cin >> choice;
+
+        // Clear input stream in case of invalid input
+        if (cin.fail()) {
+            cin.clear(); // Clear error flag
+            cin.ignore(numeric_limits<streamsize>::max(), '\n'); // Ignore invalid input
+            cout << "Invalid choice. Please enter a number between 1 and 8." << endl;
+            continue;
+        }
+
+        switch (choice) {
+            case 1:
+                clrscr(); // Clear screen before adding a book
+                cout << "Enter book ID: ";
+                cin >> id;
+                clearInputStream();
+                cout << "Enter book title: ";
+                getline(cin, title);
+                cout << "Enter book author: ";
+                getline(cin, author);
+                library.addBook(id, title, author);
+                break;
+            case 2:
+                clrscr(); // Clear screen before deleting a book
+                cout << "Enter book ID to delete: ";
+                cin >> id;
+                library.deleteBook(id);
+                break;
+            case 3:
+                clrscr(); // Clear screen before updating a book
+                cout << "Enter book ID to update: ";
+                cin >> id;
+                library.updateBook(id);
+                break;
+            case 4:
+                clrscr(); // Clear screen before searching a book
+                cout << "Enter book ID to search: ";
+                cin >> id;
+                library.searchBook(id);
+                break;
+            case 5:
+                clrscr(); // Clear screen before borrowing a book
+                cout << "Enter book ID to borrow: ";
+                cin >> id;
+                library.borrowBook(id);
+                break;
+            case 6:
+                clrscr(); // Clear screen before returning a book
+                cout << "Enter book ID to return: ";
+                cin >> id;
+                library.returnBook(id);
+                break;
+            case 7:
+                clrscr(); // Clear screen before displaying all books
+                library.displayBooks();
+                break;
+            case 8:
+                clrscr(); // Clear screen before saving and exiting
+                library.saveToFile("library_data.txt");
+                cout << "Exiting..." << endl;
+                return 0;
+            default:
+                clrscr(); // Clear screen if choice is invalid
+                cout << "Invalid choice. Please try again." << endl;
+                break;
+        }
+
+        // Pause to allow the user to see the results before clearing the screen
+        cout << "\nPress Enter to continue...";
+        cin.ignore(numeric_limits<streamsize>::max(), '\n');
+        cin.get();
+    }
+}
